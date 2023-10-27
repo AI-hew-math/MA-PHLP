@@ -49,7 +49,7 @@ parser.add_argument('--practical-neg-sample', type=bool, default = False,
 #setups in preparing the training set 
 parser.add_argument('--Max-hops', type=int, default=3,
                     help='number of max hops in sampling subgraph')
-parser.add_argument('--starting_hop_restric', type=list, default=[3,100])
+parser.add_argument('--starting-hop-restric', type=list, default=[3,100])
 # parser.add_argument('--starting-hop-of-max-nodes', type=int, default=3)
 
 #Node labeling settings
@@ -64,9 +64,6 @@ parser.add_argument('--lr', type=float, default=0.00005,
                     help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=0)
 parser.add_argument('--dropout', type=float, default=0.5)
-parser.add_argument('--activation', type=str, default='relu')
-parser.add_argument('--batch-normalize', type=str2bool, default=False)
-parser.add_argument('--weight-initialization', type=str2bool, default=False)
 parser.add_argument('--hidden-channels', type=int, default=1024)
 parser.add_argument('--num-layers', type=int, default=3)
 parser.add_argument('--batch-size', type=int, default=1024)
@@ -74,7 +71,7 @@ parser.add_argument('--epoch-num', type=int, default=10000)
 parser.add_argument('--patience', type=int, default=7)
 
 #Multi Process
-parser.add_argument('--num_cpu', type=int, default=1)
+parser.add_argument('--num-cpu', type=int, default=1)
 parser.add_argument('--multiprocess', type=str2bool, default=True)
 
 args = parser.parse_args()
@@ -110,3 +107,105 @@ Calculate_TDA_feature(**vars(args))
 
 train_loader, val_loader, test_loader = load_TDA_data(args.data_name, args.batch_size)
 print('<<Completed>>')
+
+
+print ("-"*40+'Model and Training'+"-"*45)
+print ("{:<14}|{:<13}|{:<8}|{:<11}|{:<7}|{:<16}|{:<17}|{:<10}"\
+    .format('Learning Rate','Weight Decay', 'Dropout', 'Batch Size','Epoch',\
+        'Hidden Channels', 'number of layers', 'Patience'))
+print ("-"*103)
+
+print ("{:<14}|{:<13}|{:<8}|{:<11}|{:<7}|{:<16}|{:<17}|{:<10}"\
+    .format(args.lr,args.weight_decay, str(args.dropout), str(args.batch_size),\
+        args.epoch_num, args.hidden_channels, args.num_layers, args.patience))
+print ("-"*103)
+
+
+sample = next(iter(train_loader))
+set_random_seed(args.seed)
+model = Multi_PHLP(num_multi=sample.delta_TDA_feature.size(1), hidden_channels_PI=args.hidden_channels, num_layers=args.num_layers, dropout=args.dropout)
+
+def train(loader):
+    model.train()
+    
+    total_loss = 0
+    
+    for data in tqdm(loader, desc="train"):
+        dealta_feature = data.delta_TDA_feature.to(device)
+                
+        optimizer.zero_grad()
+        link_prob, link_probs = model(dealta_feature, each_result=True)
+        link_labels = data.y.to(device)
+        loss = 0
+        for i in range(link_probs.size(1)):
+            loss += F.binary_cross_entropy(link_probs[:,i], link_labels.to(torch.float))
+        loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.float))
+        loss.backward()
+        optimizer.step()
+        total_loss += loss * data.y.size(0)
+
+    return total_loss / len(loader.dataset)
+
+
+@torch.no_grad()
+def test(loader, data_type='test'):
+    model.eval()
+        
+    total_loss = 0
+    y_pred, y_true = [], []
+    for data in tqdm(loader, desc='test:'+data_type):
+        dealta_feature = data.delta_TDA_feature.to(device)
+                
+        optimizer.zero_grad()
+        link_prob = model(dealta_feature)
+        link_labels = data.y.to(device)
+        total_loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.float)) * data.y.size(0)
+        y_pred.append(link_prob.view(-1).cpu())
+        y_true.append(data.y.view(-1).cpu().to(torch.float))
+    loss = total_loss / len(loader.dataset)
+    val_pred, val_true = torch.cat(y_pred), torch.cat(y_true)
+    
+    return roc_auc_score(val_true, val_pred), average_precision_score(val_true, val_pred), loss
+
+model = model.to(device)
+parameters = list(model.parameters())
+optimizer = torch.optim.Adam(params=parameters, lr=args.lr, weight_decay=args.weight_decay)
+early_stopping = EarlyStopping(patience = args.patience)
+
+Best_Val_fromAUC = 0
+Best_Val_loss = 10000
+Final_Test_AUC_fromAUC=0
+
+filename = "Multi_PHLP_{}.txt".format(args.data_name)
+f = open(filename, 'w')
+f.write(filename + '\n')
+f.close()
+
+for epoch in range(args.epoch_num):
+    loss_epoch = train(train_loader)
+    val_auc, val_ap, val_loss = test(val_loader, data_type='val')
+    test_auc, test_ap, test_loss = test(test_loader, data_type='test')
+    if val_auc > Best_Val_fromAUC:
+        Best_Val_fromAUC = val_auc
+        Final_Test_AUC_fromAUC = test_auc
+    if epoch%10 == 0:
+        f = open(filename, 'a')
+        f.write(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, ValLoss : {val_loss:.4f},\
+                    Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f} \n')
+        f.close()
+        print(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, ValLoss : {val_loss:.4f}, \
+        Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f}')
+        early_stopping(val_loss.item(), model)
+        if early_stopping.early_stop:
+            print("Early stopping")
+            f = open(filename, 'a')
+            f.write('Early Stopping /n')
+            f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n\n')
+            f.close()
+            break
+
+print(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}')
+f = open(filename, 'a')
+f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n')
+f.write(str(torch.softmax(model.alpha, dim=0).data)+ '\n\n')
+f.close()

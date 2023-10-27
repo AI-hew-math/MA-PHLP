@@ -29,7 +29,7 @@ python main.py --data-name USAir
 
 `--max-nodes-per-hop`: When the graph is too large or too dense, we need max node per hop threshold to avoid OOM. Default is `100`.
 
-`--starting-hop-of-max-nodes` : The hop at the start of applying max nodes.
+`--starting-hop-restric` : The list of hop at which the applying 'max nodes per hop' begins and the number of max nodes. Default is `[3,100]`
 
 `--node-label` : node labeling option `drnl`, `degdrnl`. Default is `degdrnl`.
 
@@ -43,12 +43,6 @@ python main.py --data-name USAir
 `--lr`: learning rate. Default is `0.00005`.
 
 `--dropout` : dropout ratio. Default is `0.5`.
-
-`--activation` : activation function. Default is `relu`.
-
-`--batch-nomalize` : whether to use batch nomalization. Default is `False`.
-
-`--weight-initialization` : whether to use batch nomalization. Default is `False`.
 
 `--hidden-channels`: Default is `1024`.
 
