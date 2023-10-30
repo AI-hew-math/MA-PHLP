@@ -25,7 +25,7 @@ python main.py --data-name USAir
 
 `--practical-neg-sample`: whether only see the train positive edges when sampling negative.
 
-`--Max-hops`: number of maximum hops in sampling subgraph. Defalut is `3`.
+`--Max-hops`: The number of maximum hops in sampling subgraph. Defalut is `3`.
 
 `--max-nodes-per-hop`: When the graph is too large or too dense, we need max node per hop threshold to avoid OOM. Default is `100`.
 
@@ -34,6 +34,13 @@ python main.py --data-name USAir
 `--node-label` : node labeling option `drnl`, `degdrnl`. Default is `degdrnl`.
 
 `--deg-cut` : When using `degdrnl`, maximum number of degrees to count.
+
+
+#### CPU Multiprocessing setting
+
+`--num-cpu` : The number of cpus for multiprocessing. Defalut is `1`.
+
+`--multiprocess` : You can turn off cpu multiprocessing if set to `False`. Defalut is `True`
 
 
 #### Model Hyperparameters
