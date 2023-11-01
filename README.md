@@ -12,7 +12,7 @@ This is the source code for paper _Multi Persistent Homology for Link Prediction
 ### Quick start
 
 ~~~
-python main.py --data-name USAir
+python main.py --data-name USAir --num-cpu 32
 ~~~
 
 ### Parameters
