@@ -216,9 +216,12 @@ def multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric,
 
     #A가 오염되지 않게 copy로 계산!!!
     Adj=A.copy()
+  
     #hop 계산시 target link 연결 끊고 시도 2023.0926
+    Adj = Adj.tolil()  
     Adj[src,dst]=0
     Adj[dst,src]=0
+    Adj = Adj.tocsr()
 
     nodes_1=union_single_hop(src, hop_pair[0], num_limit_pair[0], starting_hop_restric, Adj, seed=seed)
     nodes_2=union_single_hop(dst, hop_pair[1], num_limit_pair[1], starting_hop_restric, Adj, seed=seed)
@@ -319,8 +322,10 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
     #오염되지 않도록 Copy하여 A 바꾸기!!
     adj=A.copy()
     #######positive 먼저 계산 ######### subgraph의 adj는 target node가 0,1 번째 index에 위치함.
+    adj = adj.tolil()  
     adj[0, 1] = 1
     adj[1, 0] = 1
+    adj = adj.tocsr()
     u, v, r = ssp.find(adj)
 
     ####################degree 계산 (np.array)####################
@@ -343,8 +348,10 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
     data_pos = Data(edge_index=edge_index, y=y, z=z)
 
     ####### negative 계산 #########
+    adj = adj.tolil()  
     adj[0, 1] = 0
     adj[1, 0] = 0
+    adj = adj.tocsr()
     u, v, r = ssp.find(adj)
 
     node_ids = torch.LongTensor(node_ids)
