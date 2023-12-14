@@ -228,7 +228,7 @@ def multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric,
 
     # target node 젤 앞에 두기
     nodes=nodes+list(set(nodes_1).union(set(nodes_2))-set(nodes))
-    subgraph = Adj[nodes, :][:, nodes]
+    subgraph = A[nodes, :][:, nodes]
 
     if node_features is not None:
         node_features = node_features[nodes]
