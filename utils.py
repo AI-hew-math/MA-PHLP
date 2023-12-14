@@ -341,7 +341,6 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
     else:
         raise Exception("Something Wrong in construct_pyg_graph")
 
-    inf_value = torch.max(z) + 1
     if degree_info == True:
         z = give_deg_info(z, adj, Max_deg)
 
@@ -365,9 +364,6 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
     else:
         raise Exception("Something Wrong in construct_pyg_graph")
  
-  
-    # 0 -> inf_value
-    z[torch.where(z==0)]=inf_value
     if degree_info == True:
         z = give_deg_info(z, adj, Max_deg)
     
@@ -390,7 +386,7 @@ def node_labeling_fitration(edge_index, z):
     return matrix
 
 def get_TDA_feature_image(matrix):
-    death = matrix.max() + 5
+    death = matrix.max()*1.2
     matrix[np.where(matrix == 0)] = death # replace death
     np.fill_diagonal(matrix,0)
     
@@ -401,6 +397,8 @@ def get_TDA_feature_image(matrix):
 
     # get persistence Landscape
     dg0 = RipsM_tree.persistence_intervals_in_dimension(0)
+    dg0 = dg0[~np.isinf(dg0).any(axis=1)]
+  
     dg1 = RipsM_tree.persistence_intervals_in_dimension(1)
     dg0[np.where(dg0 == np.inf)] = death
     if len(dg1) == 0:
