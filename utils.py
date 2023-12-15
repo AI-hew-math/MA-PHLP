@@ -348,7 +348,6 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
     return data_neg, data_pos
 
 
-
 def node_labeling_fitration(edge_index, z):
     edge_weight = torch.ones(edge_index.size(1))
     for i in range(len(edge_weight)):
@@ -457,7 +456,7 @@ def make_TDA_feature(data,  A, node_label, starting_hop_restric, deg_cut, Max_ho
         print(f'Start calculate persistence image: {mode}')
         dataset_TDA = [multi_get_PI(graphdata, onedim_PH=onedim_PH) for graphdata in tqdm(dataset, desc= f'Calculate persistence image: {mode}')]
 
-        return dataset_TDA
+    return dataset_TDA
 
 
 def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, seed, Max_hops, multi_angle, angle_hop, onedim_PH, num_cpu, multiprocess, **kwargs):
