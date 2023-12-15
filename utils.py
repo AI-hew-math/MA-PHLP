@@ -236,7 +236,7 @@ def multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric,
     return nodes, subgraph, node_features, y
 
 def multihop_extract_enclosing_subgraphs(lst, A, x, y, node_label='drnl', starting_hop_restric=[3,100],
-                                deg_cut=0.95, Max_hops=2, step_size=100, seed: int = 1, degree_info = False):
+                                deg_cut=0.95, Max_hops=2, multi_angle=False, angle_hop='[3,0]', step_size=100, seed: int = 1, degree_info = False):
     src, dst = lst
     graph = A.toarray()
     deg = np.sum(graph, axis=1)
@@ -254,30 +254,53 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, node_label='drnl', starti
     else:
         degree_info = False
 
-    multi_data=[]
+    if multi_angle:
+        multi_data=[]
 
-    for i in range(1,Max_hops+1):
-        for j in range(i+1):
-            num_limit_pair = [i*step_size, j*step_size]
-            hop_pair=[i,j]
+        for i in range(1,Max_hops+1):
+            for j in range(i+1):
+                num_limit_pair = [i*step_size, j*step_size]
+                hop_pair=[i,j]
 
-            if i == j:
-                tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
-                data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)]
-                data[0][0].hop = hop_pair
-            else: 
-                tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
-                data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
+                if i == j:
+                    tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+                    data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)]
+                    data[0][0].hop = hop_pair
+                else: 
+                    tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+                    data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
 
-                num_limit_pair = [j*step_size, i*step_size]
-                hop_pair = [j,i]
+                    num_limit_pair = [j*step_size, i*step_size]
+                    hop_pair = [j,i]
 
-                tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
-                data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
-                data1[0].hop = hop_pair
-                data = [data1, data2]
-            multi_data.append(data)
-    multi_data[0][0][0].target_nodes = torch.tensor([src,dst])
+                    tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+                    data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
+                    data1[0].hop = hop_pair
+                    data = [data1, data2]
+                multi_data.append(data)
+        multi_data[0][0][0].target_nodes = torch.tensor([src,dst])
+    else:
+        multi_data=[]
+        i,j = int(angle_hop[1]), int(angle_hop[3])
+        num_limit_pair = [i*step_size, j*step_size]
+        hop_pair=[i,j]
+
+        if i == j:
+            tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+            data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)]
+            data[0][0].hop = hop_pair
+        else: 
+            tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+            data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
+
+            num_limit_pair = [j*step_size, i*step_size]
+            hop_pair = [j,i]
+
+            tmp = multi_hop_subgraph(src, dst, hop_pair, num_limit_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+            data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
+            data1[0].hop = hop_pair
+            data = [data1, data2]
+        multi_data.append(data)
 
     return multi_data
 
@@ -385,43 +408,61 @@ def node_labeling_fitration(edge_index, z):
     
     return matrix
 
-def get_TDA_feature_image(matrix):
+def get_TDA_feature_image(matrix, onedim_PH=False):
     death = matrix.max()*1.2
     matrix[np.where(matrix == 0)] = death # replace death
     np.fill_diagonal(matrix,0)
     
     # get persistence diagram
     RipsM = gd.RipsComplex(distance_matrix = matrix, max_edge_length=death+1)
-    RipsM_tree = RipsM.create_simplex_tree(max_dimension = 2)
-    RipsM_tree.persistence()
+    if onedim_PH:
+        RipsM_tree = RipsM.create_simplex_tree(max_dimension = 2)
+        RipsM_tree.persistence()
 
-    # get persistence Landscape
-    dg0 = RipsM_tree.persistence_intervals_in_dimension(0)
-    dg0 = dg0[~np.isinf(dg0).any(axis=1)]
-  
-    dg1 = RipsM_tree.persistence_intervals_in_dimension(1)
-    dg0[np.where(dg0 == np.inf)] = death
-    if len(dg1) == 0:
-        dg1 = np.empty([0,2])
-
-    l0 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)]) ## 웨이트 이렇게 확정 ? ?
-    l1 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[0]+1)).fit_transform([np.array(dg1)]) 
+        # get persistence Image
+        dg0 = RipsM_tree.persistence_intervals_in_dimension(0)
+        dg0 = dg0[~np.isinf(dg0).any(axis=1)]
     
-    return torch.tensor(np.concatenate((l0,l1),axis=1))
+        dg1 = RipsM_tree.persistence_intervals_in_dimension(1)
+        dg0[np.where(dg0 == np.inf)] = death
+        if len(dg1) == 0:
+            dg1 = np.empty([0,2])
 
-def multi_get_PI(full_data):
+        l0 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)]) ## 웨이트 이렇게 확정 ? ?
+        l1 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[0]+1)).fit_transform([np.array(dg1)]) 
+    
+        return torch.tensor(np.concatenate((l0,l1),axis=1))
+    
+    else:
+        RipsM_tree = RipsM.create_simplex_tree(max_dimension = 1)
+        RipsM_tree.persistence()
+
+        # get persistence Image
+        dg0 = RipsM_tree.persistence_intervals_in_dimension(0)
+        dg0 = dg0[~np.isinf(dg0).any(axis=1)]
+    
+        dg0[np.where(dg0 == np.inf)] = death
+
+        l0 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)]) ## 웨이트 이렇게 확정 ? ?
+    
+        return torch.tensor(l0)
+
+def multi_get_PI(full_data, onedim_PH):
     base_data = full_data[0][0][0] # first data1
     
-    delta_TDA_feature = torch.empty((0,1024))
+    if onedim_PH:
+        delta_TDA_feature = torch.empty((0,1024))
+    else:
+        delta_TDA_feature = torch.empty((0,512))
     for multi_data in full_data:
         value = 0
         for data in multi_data:
             data1, data2 = data
             distance_matrix = node_labeling_fitration(data1.edge_index, data1.z)
-            data1_TDA_feature =  get_TDA_feature_image(distance_matrix)
+            data1_TDA_feature =  get_TDA_feature_image(distance_matrix, onedim_PH)
 
             distance_matrix = node_labeling_fitration(data2.edge_index, data2.z)
-            data2_TDA_feature =  get_TDA_feature_image(distance_matrix)
+            data2_TDA_feature =  get_TDA_feature_image(distance_matrix, onedim_PH)
 
             value += torch.concat([data1_TDA_feature, data2_TDA_feature],dim=1)
         delta_TDA_feature = torch.concat([delta_TDA_feature, value],dim=0)
@@ -430,7 +471,7 @@ def multi_get_PI(full_data):
     
     return base_data
 
-def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, seed, Max_hops, num_cpu, multiprocess, **kwargs):
+def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, seed, Max_hops, multi_angle, angle_hop, onedim_PH, num_cpu, multiprocess, **kwargs):
     if data_name in ['USAir', 'NS', 'Celegans','Power','Router','Yeast','PB','Ecoli']:
         data = load_unsplitted_data(data_name)
 
@@ -439,7 +480,16 @@ def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, 
     train_edge = torch.concat((data.train_pos,data.train_pos[[1,0]]),dim=1)
     A = ssp.csr_matrix((edge_weight, (train_edge[0],train_edge[1])), shape=(data.num_nodes, data.num_nodes))
 
-    dir_ = cur_dir + '/data_TDA/' + data_name
+    if onedim_PH:
+        if multi_angle:
+            dir_ = cur_dir + '/data_TDA/multi_angle/' + data_name + '/seed' + str(seed)
+        else:
+            dir_ = cur_dir + '/data_TDA/single_angle/' + data_name + '/seed' + str(seed)
+    else:
+        if multi_angle:
+            dir_ = cur_dir + '/data_TDA/multi_angle(0dim)/' + data_name + '/seed' + str(seed)
+        else:
+            dir_ = cur_dir + '/data_TDA/single_angle(0dim)/' + data_name + '/seed' + str(seed)
     # 없으면 폴더 만들기
     if not os.path.exists(dir_):
         os.makedirs(dir_)
@@ -462,18 +512,18 @@ def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, 
         if multiprocess == True:
             print('Start extract positive subgraphs: valid')
             valid_pos_list = parmap.starmap(multihop_extract_enclosing_subgraphs, [[lst] for lst in pos_edge.t().tolist()],  
-                A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
+                A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
             print('Start extract negative subgraphs: valid')
             valid_neg_list = parmap.starmap(multihop_extract_enclosing_subgraphs, [[lst] for lst in neg_edge.t().tolist()],  
-                A=A, x=data.x, y=0,  node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
+                A=A, x=data.x, y=0,  node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
             val_dataset = valid_pos_list + valid_neg_list
             print('Calculate persistence image: valid')
-            val_dataset_TDA = parmap.map(multi_get_PI, val_dataset, pm_pbar=True, pm_processes=num_cpu)
+            val_dataset_TDA = parmap.starmap(multi_get_PI, [[graphdata] for graphdata in val_dataset], onedim_PH=onedim_PH, pm_pbar=True, pm_processes=num_cpu)
         else:
-            valid_pos_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size, seed=seed) for lst in tqdm(pos_edge.t().tolist(), desc = 'Extract positive subgraphs: valid')]
-            valid_neg_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size, seed=seed) for lst in tqdm(neg_edge.t().tolist(), desc = 'Extract negative subgraphs: valid')]
+            valid_pos_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size, seed=seed) for lst in tqdm(pos_edge.t().tolist(), desc = 'Extract positive subgraphs: valid')]
+            valid_neg_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size, seed=seed) for lst in tqdm(neg_edge.t().tolist(), desc = 'Extract negative subgraphs: valid')]
             val_dataset = valid_pos_list + valid_neg_list
-            val_dataset_TDA = [multi_get_PI(graphdata) for graphdata in tqdm(val_dataset, desc= 'Calculate persistence image: valid')]
+            val_dataset_TDA = [multi_get_PI(graphdata, onedim_PH=onedim_PH) for graphdata in tqdm(val_dataset, desc= 'Calculate persistence image: valid')]
 
         with open(dir_+'/val_dataset_TDA.pickle', 'wb') as f:
             pickle.dump(val_dataset_TDA, f, pickle.HIGHEST_PROTOCOL)
@@ -492,18 +542,18 @@ def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, 
         if multiprocess == True:
             print('Start extract positive subgraphs: test')
             test_pos_list = parmap.starmap(multihop_extract_enclosing_subgraphs, [[lst] for lst in pos_edge.t().tolist()],  
-                A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
+                A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
             print('Start extract positive subgraphs: test')
             test_neg_list = parmap.starmap(multihop_extract_enclosing_subgraphs, [[lst] for lst in neg_edge.t().tolist()],  
-                A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
+                A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
             test_dataset = test_pos_list + test_neg_list
             print('Calculate persistence image: test')
-            test_dataset_TDA = parmap.map(multi_get_PI, test_dataset, pm_pbar=True, pm_processes=num_cpu)
+            test_dataset_TDA = parmap.starmap(multi_get_PI, [[graphdata] for graphdata in test_dataset], onedim_PH=onedim_PH, pm_pbar=True, pm_processes=num_cpu)
         else:
-            test_pos_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size, seed=seed) for lst in tqdm(pos_edge.t().tolist(), desc = 'Extract positive subgraphs: test')]
-            test_neg_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size, seed=seed) for lst in tqdm(neg_edge.t().tolist(), desc = 'Extract negative subgraphs: test')]
+            test_pos_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size, seed=seed) for lst in tqdm(pos_edge.t().tolist(), desc = 'Extract positive subgraphs: test')]
+            test_neg_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size, seed=seed) for lst in tqdm(neg_edge.t().tolist(), desc = 'Extract negative subgraphs: test')]
             test_dataset = test_pos_list + test_neg_list
-            test_dataset_TDA = [multi_get_PI(graphdata) for graphdata in tqdm(test_dataset, desc= 'Calculate persistence image: test' )]   
+            test_dataset_TDA = [multi_get_PI(graphdata, onedim_PH=onedim_PH) for graphdata in tqdm(test_dataset, desc= 'Calculate persistence image: test' )]   
 
         with open(dir_+'/test_dataset_TDA.pickle', 'wb') as f:
             pickle.dump(test_dataset_TDA, f, pickle.HIGHEST_PROTOCOL)
@@ -516,37 +566,51 @@ def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, 
         degree = A.toarray().sum(axis=0)
         alpha = (degree[data.train_pos.transpose(0,1)].sum() + degree[data.val_pos.transpose(0,1)].sum()) / (degree[data.train_neg.transpose(0,1)].sum() + degree[data.val_neg.transpose(0,1)].sum())
         num_supplement = data.num_nodes/(alpha-1)**2/400 #0.5 %
-        step_size=round(int(num_supplement))    
+        step_size=round(int(num_supplement))
 
         if multiprocess == True:
             print('Start extract positive subgraphs: train')
             train_pos_list = parmap.starmap(multihop_extract_enclosing_subgraphs, [[lst] for lst in pos_edge.t().tolist()],  
-                A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
+                A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
             print('Start extract positive subgraphs: train')
             train_neg_list = parmap.starmap(multihop_extract_enclosing_subgraphs, [[lst] for lst in neg_edge.t().tolist()],  
-                A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
+                A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size,seed=seed,pm_pbar=True, pm_processes=num_cpu)
             train_dataset = train_pos_list + train_neg_list
             print('Calculate persistence image: train')
-            train_dataset_TDA = parmap.map(multi_get_PI, train_dataset, pm_pbar=True, pm_processes=num_cpu)
+            train_dataset_TDA = parmap.starmap(multi_get_PI, [[graphdata] for graphdata in train_dataset], onedim_PH=onedim_PH, pm_pbar=True, pm_processes=num_cpu)
         else:
-            train_pos_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size, seed=seed) for lst in tqdm(pos_edge.t().tolist(), desc = 'Extract positive subgraphs: train')]
-            train_neg_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, step_size=step_size, seed=seed) for lst in tqdm(neg_edge.t().tolist(), desc = 'Extract negative subgraphs: train')]
+            train_pos_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=1, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size, seed=seed) for lst in tqdm(pos_edge.t().tolist(), desc = 'Extract positive subgraphs: train')]
+            train_neg_list = [multihop_extract_enclosing_subgraphs(lst, A=A, x=data.x, y=0, node_label=node_label, starting_hop_restric=starting_hop_restric, deg_cut=deg_cut, Max_hops=Max_hops, multi_angle=multi_angle, angle_hop=angle_hop, step_size=step_size, seed=seed) for lst in tqdm(neg_edge.t().tolist(), desc = 'Extract negative subgraphs: train')]
             train_dataset = train_pos_list + train_neg_list
-            train_dataset_TDA = [multi_get_PI(graphdata) for graphdata in tqdm(train_dataset, desc= 'Calculate persistence image: train')]   
+            train_dataset_TDA = [multi_get_PI(graphdata, onedim_PH=onedim_PH) for graphdata in tqdm(train_dataset, desc= 'Calculate persistence image: train')]   
 
         with open(dir_+'/train_dataset_TDA.pickle', 'wb') as f:
             pickle.dump(train_dataset_TDA, f, pickle.HIGHEST_PROTOCOL)
 
     print(f'{data_name} is DONE !!')
 
-def load_TDA_data(data_name, batch_size=1024):
+def load_TDA_data(data_name, onedim_PH, multi_angle, seed, batch_size=1024):
 
-    dir_ = cur_dir + '/data_TDA/' + data_name
+    if onedim_PH:
+        if multi_angle:
+            dir_ = cur_dir + '/data_TDA/multi_angle/' + data_name + '/seed' + str(seed)
+        else:
+            dir_ = cur_dir + '/data_TDA/single_angle/' + data_name + '/seed' + str(seed)
+    else:
+        if multi_angle:
+            dir_ = cur_dir + '/data_TDA/multi_angle(0dim)/' + data_name + '/seed' + str(seed)
+        else:
+            dir_ = cur_dir + '/data_TDA/single_angle(0dim)/' + data_name + '/seed' + str(seed)
 
     # load
     with open(osp.join(dir_,'train_dataset_TDA.pickle'), 'rb') as f:
         train_dataset_TDA = pickle.load(f)
     maxs = torch.empty((0,train_dataset_TDA[0].delta_TDA_feature.size(0)))
+    image_size = train_dataset_TDA[0].delta_TDA_feature.size(1)
+    if multi_angle:
+        image_shape = (1,maxs.size(1),image_size)
+    else:
+        image_shape = (1,image_size)
     for data in train_dataset_TDA:
         feature_abs = torch.abs(data.delta_TDA_feature) 
         max_ = feature_abs.max(dim=1)[0].reshape((1,maxs.size(1)))
@@ -554,19 +618,19 @@ def load_TDA_data(data_name, batch_size=1024):
     M = maxs.max(dim=0)[0]
     for data in train_dataset_TDA:
         nomalized_feature = ((1/M).unsqueeze(1) * (data.delta_TDA_feature))
-        data.delta_TDA_feature = nomalized_feature.reshape((1,maxs.size(1),1024))
+        data.delta_TDA_feature = nomalized_feature.reshape(image_shape)
     
     with open(osp.join(dir_,'val_dataset_TDA.pickle'), 'rb') as f:
         val_dataset_TDA = pickle.load(f)
     for data in val_dataset_TDA:
         nomalized_feature = ((1/M).unsqueeze(1) * (data.delta_TDA_feature))
-        data.delta_TDA_feature = nomalized_feature.reshape((1,maxs.size(1),1024))
+        data.delta_TDA_feature = nomalized_feature.reshape(image_shape)
     
     with open(osp.join(dir_,'test_dataset_TDA.pickle'), 'rb') as f:
         test_dataset_TDA = pickle.load(f)
     for data in test_dataset_TDA:
         nomalized_feature = ((1/M).unsqueeze(1) * (data.delta_TDA_feature))
-        data.delta_TDA_feature = nomalized_feature.reshape((1,maxs.size(1),1024))
+        data.delta_TDA_feature = nomalized_feature.reshape(image_shape)
 
     train_loader = DataLoader(train_dataset_TDA, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset_TDA, batch_size=batch_size)

@@ -35,6 +35,12 @@ python main.py --data-name USAir --num-cpu 32
 
 `--deg-cut` : When using `degdrnl`, maximum number of degrees to count.
 
+`--onedim-PH` : You can only use 0 dimensional homology if `False` and 0 dimension and 1 dimension together if `True`. Defalut is `False`. 
+
+`--multi-angle` : You can use Multi-Angle PHLP if `True` and PHLP if `False`. Defalut is `False`. 
+
+`--angle-hop` : angle hop of PHLP. Defalut is `[3,1]`. If we use Multi-angle PHLP, it does not needed.
+
 
 #### CPU Multiprocessing setting
 
@@ -47,11 +53,9 @@ python main.py --data-name USAir --num-cpu 32
 
 `--seed`: random seed. Default is `1`.
 
-`--lr`: learning rate. Default is `0.00005`.
+`--lr`: learning rate. Default is `0.0005`.
 
 `--dropout` : dropout ratio. Default is `0.5`.
-
-`--hidden-channels`: Default is `1024`.
 
 `--num-layers`: The number of fully connected layers. Default is `3`.
 
@@ -59,5 +63,5 @@ python main.py --data-name USAir --num-cpu 32
 
 `--epoch-num`: Default is `10000`.
 
-`--patience`: Patience of early stopping. Default is `7`.
+`--patience`: Patience of early stopping. Default is `20`.
 

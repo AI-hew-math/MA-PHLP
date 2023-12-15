@@ -11,7 +11,7 @@ import argparse
 
 import torch.nn.functional as F
 from utils import set_random_seed, load_TDA_data, Calculate_TDA_feature 
-from model import Multi_PHLP
+from model import Multi_PHLP, PHLP
 from pytorchtools import EarlyStopping
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -57,18 +57,25 @@ parser.add_argument('--node-label', type=str, default='degdrnl',
                     help='whether to use degree drnl labeling')
 parser.add_argument('--deg-cut', type=int, default=5)
 
+#Persistent Homology settings
+parser.add_argument('--onedim-PH', type=str2bool, default=False,
+                    help='whether to use 1 dimensional persistent homology')
+parser.add_argument('--multi-angle', type=str2bool, default=False,
+                    help='whether to use Multi-angle PHLP')
+parser.add_argument('--angle-hop', type=list, default=[3,1],
+                    help='whether to use Multi-angle PHLP')
+
 #Model and Training
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
-parser.add_argument('--lr', type=float, default=0.00005,
+parser.add_argument('--lr', type=float, default=0.0005,
                     help='learning rate')
 parser.add_argument('--weight-decay', type=float, default=0)
 parser.add_argument('--dropout', type=float, default=0.5)
-parser.add_argument('--hidden-channels', type=int, default=1024)
 parser.add_argument('--num-layers', type=int, default=3)
 parser.add_argument('--batch-size', type=int, default=1024)
 parser.add_argument('--epoch-num', type=int, default=10000)
-parser.add_argument('--patience', type=int, default=7)
+parser.add_argument('--patience', type=int, default=20)
 
 #Multi Process
 parser.add_argument('--num-cpu', type=int, default=1)
@@ -105,9 +112,17 @@ print ("-"*33)
 print('<<Begin calculating Persistent Homological feature>>')
 Calculate_TDA_feature(**vars(args))
 
-train_loader, val_loader, test_loader = load_TDA_data(args.data_name, args.batch_size)
+train_loader, val_loader, test_loader = load_TDA_data(args.data_name, args.onedim_PH, args.multi_angle, args.seed, args.batch_size)
 print('<<Completed>>')
 
+sample = next(iter(train_loader))
+set_random_seed(args.seed)
+if args.multi_angle:
+    hidden_channels = sample.delta_TDA_feature.size(2)
+    model = Multi_PHLP(num_multi=sample.delta_TDA_feature.size(1), hidden_channels_PI=hidden_channels, num_layers=args.num_layers, dropout=args.dropout)
+else:
+    hidden_channels = sample.delta_TDA_feature.size(1)
+    model = PHLP(hidden_channels_PI=hidden_channels, num_layers=args.num_layers, dropout=args.dropout)
 
 print ("-"*40+'Model and Training'+"-"*45)
 print ("{:<14}|{:<13}|{:<8}|{:<11}|{:<7}|{:<16}|{:<17}|{:<10}"\
@@ -117,29 +132,27 @@ print ("-"*103)
 
 print ("{:<14}|{:<13}|{:<8}|{:<11}|{:<7}|{:<16}|{:<17}|{:<10}"\
     .format(args.lr,args.weight_decay, str(args.dropout), str(args.batch_size),\
-        args.epoch_num, args.hidden_channels, args.num_layers, args.patience))
+        args.epoch_num, hidden_channels, args.num_layers, args.patience))
 print ("-"*103)
 
-
-sample = next(iter(train_loader))
-set_random_seed(args.seed)
-model = Multi_PHLP(num_multi=sample.delta_TDA_feature.size(1), hidden_channels_PI=args.hidden_channels, num_layers=args.num_layers, dropout=args.dropout)
-
-def train(loader):
+def train(loader, multi_angle=False):
     model.train()
     
     total_loss = 0
-    
     for data in tqdm(loader, desc="train"):
         dealta_feature = data.delta_TDA_feature.to(device)
                 
         optimizer.zero_grad()
-        link_prob, link_probs = model(dealta_feature, each_result=True)
-        link_labels = data.y.to(device)
         loss = 0
-        for i in range(link_probs.size(1)):
-            loss += F.binary_cross_entropy(link_probs[:,i], link_labels.to(torch.float))
-        loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.float))
+        link_labels = data.y.to(device)
+        if multi_angle:
+            link_prob, link_probs = model(dealta_feature, each_result=True)
+            for i in range(link_probs.size(1)):
+                loss += F.binary_cross_entropy(link_probs[:,i], link_labels.to(torch.float))
+            loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.float))
+        else:
+            link_prob = model(dealta_feature)
+            loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.double))
         loss.backward()
         optimizer.step()
         total_loss += loss * data.y.size(0)
@@ -148,7 +161,7 @@ def train(loader):
 
 
 @torch.no_grad()
-def test(loader, data_type='test'):
+def test(loader, multi_angle=False, data_type='test'):
     model.eval()
         
     total_loss = 0
@@ -159,7 +172,10 @@ def test(loader, data_type='test'):
         optimizer.zero_grad()
         link_prob = model(dealta_feature)
         link_labels = data.y.to(device)
-        total_loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.float)) * data.y.size(0)
+        if multi_angle:
+            total_loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.float)) * data.y.size(0)
+        else:
+            total_loss += F.binary_cross_entropy(link_prob, link_labels.to(torch.double)) * data.y.size(0)
         y_pred.append(link_prob.view(-1).cpu())
         y_true.append(data.y.view(-1).cpu().to(torch.float))
     loss = total_loss / len(loader.dataset)
@@ -176,16 +192,26 @@ Best_Val_fromAUC = 0
 Best_Val_loss = 10000
 Final_Test_AUC_fromAUC=0
 
-filename = "Multi_PHLP_{}.txt".format(args.data_name)
+if args.onedim_PH:
+    if args.multi_angle:
+        filename = "Multi_PHLP_{}_seed{}.txt".format(args.data_name, args.seed)
+    else:
+        filename = "PHLP_{}_seed{}.txt".format(args.data_name, args.seed)
+else:
+    if args.multi_angle:
+        filename = "Multi_PHLP(0dim)_{}_seed{}.txt".format(args.data_name, args.seed)
+    else:
+        filename = "PHLP(0dim)_{}_seed{}.txt".format(args.data_name, args.seed)
+    
 f = open(filename, 'w')
 f.write(filename + '\n')
 f.close()
 
 for epoch in range(args.epoch_num):
-    loss_epoch = train(train_loader)
-    val_auc, val_ap, val_loss = test(val_loader, data_type='val')
-    test_auc, test_ap, test_loss = test(test_loader, data_type='test')
+    loss_epoch = train(train_loader, multi_angle=args.multi_angle)
+    val_auc, val_ap, val_loss = test(val_loader, multi_angle=args.multi_angle, data_type='val')
     if val_auc > Best_Val_fromAUC:
+        test_auc, test_ap, test_loss = test(test_loader, multi_angle=args.multi_angle, data_type='test')
         Best_Val_fromAUC = val_auc
         Final_Test_AUC_fromAUC = test_auc
     if epoch%10 == 0:
@@ -195,17 +221,16 @@ for epoch in range(args.epoch_num):
         f.close()
         print(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, ValLoss : {val_loss:.4f}, \
         Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f}')
-        early_stopping(val_loss.item(), model)
-        if early_stopping.early_stop:
-            print("Early stopping")
-            f = open(filename, 'a')
-            f.write('Early Stopping /n')
-            f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n\n')
-            f.close()
-            break
+    early_stopping(val_loss.item(), model)
+    if early_stopping.early_stop:
+        print("Early stopping")
+        f = open(filename, 'a')
+        f.write('Early Stopping /n')
+        f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n\n')
+        f.close()
+        break
 
 print(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}')
 f = open(filename, 'a')
 f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n')
-f.write(str(torch.softmax(model.alpha, dim=0).data)+ '\n\n')
 f.close()
