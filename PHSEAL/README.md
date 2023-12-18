@@ -8,6 +8,9 @@ This is the source code for paper _Multi Persistent Homology for Link Prediction
 The code is adapted from SEAL's original implementation. [link](https://github.com/muhanzhang/SEAL)
 
 ## Requirements
+[Pytorch_DGCNN](https://github.com/muhanzhang/pytorch_DGCNN/tree/master)
+Pytorch_DGCNN should be git cloned in Python directory.
+
 
 ## Run
 
