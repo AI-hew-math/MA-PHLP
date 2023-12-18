@@ -196,7 +196,7 @@ def multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_feat
     return nodes, subgraph, node_features, y
 
 def multihop_extract_enclosing_subgraphs(lst, A, x, y, node_label='drnl', starting_hop_restric=[3,100],
-                                deg_cut=0.95, Max_hops=2, multi_angle=False, angle_hop='[3,0]', seed: int = 1, degree_info = False):
+                                deg_cut=0.95, Max_hops=2, multi_angle=False, angle_hop=[3,0], seed: int = 1, degree_info = False):
     src, dst = lst
     graph = A.toarray()
     deg = np.sum(graph, axis=1)
@@ -238,7 +238,7 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, node_label='drnl', starti
         multi_data[0][0][0].target_nodes = torch.tensor([src,dst])
     else:
         multi_data=[]
-        i,j = int(angle_hop[1]), int(angle_hop[3])
+        i,j = int(angle_hop[0]), int(angle_hop[1])
 
         hop_pair=[i,j]
 
