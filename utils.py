@@ -463,7 +463,7 @@ def Calculate_TDA_feature(data_name, starting_hop_restric, node_label, deg_cut, 
     if data_name in ['USAir', 'NS', 'Celegans','Power','Router','Yeast','PB','Ecoli']:
         data = load_unsplitted_data(data_name)
 
-    data = split_edges(data)
+    data = split_edges(data, seed=seed)
     edge_weight = torch.ones(data.train_pos.size(1)*2, dtype=int)
     train_edge = torch.concat((data.train_pos,data.train_pos[[1,0]]),dim=1)
     A = ssp.csr_matrix((edge_weight, (train_edge[0],train_edge[1])), shape=(data.num_nodes, data.num_nodes))
