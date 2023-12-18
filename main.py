@@ -7,6 +7,7 @@ from sklearn.metrics import roc_auc_score, average_precision_score
 # import scipy.sparse as ssp
 from tqdm import tqdm
 import argparse
+import re
 
 
 import torch.nn.functional as F
@@ -33,6 +34,13 @@ def str2none(v):
     else:
         return str(v)
 
+def parse_list(argument):
+    try:
+        items = re.split('[,\[\]]', argument)
+        return [int(x) for x in items if x]
+    except ValueError:
+        raise argparse.ArgumentTypeError("List items need to be integers")
+
 
 parser = argparse.ArgumentParser(description='Link Prediction with Persistent-Homology')
 #Dataset 
@@ -49,7 +57,7 @@ parser.add_argument('--practical-neg-sample', type=bool, default = False,
 #setups in preparing the training set 
 parser.add_argument('--Max-hops', type=int, default=3,
                     help='number of max hops in sampling subgraph')
-parser.add_argument('--starting-hop-restric', type=list, default=[3,100])
+parser.add_argument('--starting-hop-restric', type=parse_list, default=[3,100])
 # parser.add_argument('--starting-hop-of-max-nodes', type=int, default=3)
 
 #Node labeling settings
@@ -62,7 +70,7 @@ parser.add_argument('--onedim-PH', type=str2bool, default=False,
                     help='whether to use 1 dimensional persistent homology')
 parser.add_argument('--multi-angle', type=str2bool, default=False,
                     help='whether to use Multi-angle PHLP')
-parser.add_argument('--angle-hop', type=list, default=[3,1],
+parser.add_argument('--angle-hop', type=parse_list, default=[3,1],
                     help='whether to use Multi-angle PHLP')
 
 #Model and Training
