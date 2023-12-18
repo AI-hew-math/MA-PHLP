@@ -3,9 +3,9 @@
 
 ## About
 
-This is the source code for the paper Multi Persistent Homology for Link Prediction, specifically for the part Multi_PHLP + SEAL. 
+This is the source code for the paper Multi Persistent Homology for Link Prediction, specifically for the part Multi_PHLP + SEAL.
 
-The code is adapted from the original implementation of SEAL, which can be found [here](https://github.com/muhanzhang/SEAL)
+The code is adapted from the original implementation of SEAL, which can be found [here](https://github.com/muhanzhang/SEAL).
 
 ## Requirements
 [Pytorch_DGCNN](https://github.com/muhanzhang/pytorch_DGCNN/tree/master) should be git cloned into the Python directory.
