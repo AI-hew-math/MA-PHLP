@@ -25,7 +25,7 @@ python main.py --data-name USAir --num-cpu 32
 
 `--practical-neg-sample`: whether only see the train positive edges when sampling negative.
 
-`--Max-hops`: The number of maximum hops in sampling subgraph. Defalut is `3`.
+`--Max-hops`: The number of maximum hops in sampling subgraph. Default is `3`.
 
 `--max-nodes-per-hop`: When the graph is too large or too dense, we need max node per hop threshold to avoid OOM. Default is `100`.
 
@@ -35,18 +35,18 @@ python main.py --data-name USAir --num-cpu 32
 
 `--deg-cut` : When using `degdrnl`, maximum number of degrees to count.
 
-`--onedim-PH` : You can only use 0 dimensional homology if `False` and 0 dimension and 1 dimension together if `True`. Defalut is `False`. 
+`--onedim-PH` : You can only use 0 dimensional homology if `False` and 0 dimension and 1 dimension together if `True`. Default is `False`. 
 
-`--multi-angle` : You can use Multi-Angle PHLP if `True` and PHLP if `False`. Defalut is `False`. 
+`--multi-angle` : You can use Multi-Angle PHLP if `True` and PHLP if `False`. Default is `False`. 
 
-`--angle-hop` : angle hop of PHLP. Defalut is `[3,1]`. If we use Multi-angle PHLP, it does not needed.
+`--angle-hop` : angle hop of PHLP. Default is `[3,1]`. If we use Multi-angle PHLP, it does not needed.
 
 
 #### CPU Multiprocessing setting
 
-`--num-cpu` : The number of cpus for multiprocessing. Defalut is `1`.
+`--num-cpu` : The number of cpus for multiprocessing. Default is `1`.
 
-`--multiprocess` : You can turn off cpu multiprocessing if set to `False`. Defalut is `True`
+`--multiprocess` : You can turn off cpu multiprocessing if set to `False`. Default is `True`
 
 
 #### Model Hyperparameters
