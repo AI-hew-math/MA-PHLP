@@ -29,6 +29,11 @@ def set_random_seed(seed):
     torch.backends.cudnn.deterministic = True  # type: ignore
     torch.backends.cudnn.benchmark = True  # type: ignore
 
+class TDA_GNNGraph(GNNGraph):
+    def __init__(self, g, label, node_tags=None, node_features=None, graph_features=None):
+        super().__init__(g, label, node_tags, node_features)
+        self.graph_features = graph_features
+
 def sample_neg(net, test_ratio=0.1, train_pos=None, test_pos=None, max_train_num=None,
                all_unknown_as_negative=False):
     # get upper triangular matrix
@@ -113,7 +118,7 @@ def links2subgraphs(A, train_pos, train_neg, test_pos, test_neg, h=1,
                     multi_angle = multi_angle
                 )
                 max_n_label['value'] = max(max(n_labels), max_n_label['value'])
-                g_list.append(GNNGraph(g, graph_label, n_labels, n_features, graph_features))
+                g_list.append(TDA_GNNGraph(g, graph_label, n_labels, n_features, graph_features))
             return g_list
         else:
             # the parallel extraction code
@@ -135,7 +140,7 @@ def links2subgraphs(A, train_pos, train_neg, test_pos, test_neg, h=1,
             pool.close()
             pool.join()
             pbar.close()
-            g_list = [GNNGraph(g, graph_label, n_labels, n_features, graph_features) for g, graph_label, n_labels, n_features, graph_features in results]
+            g_list = [TDA_GNNGraph(g, graph_label, n_labels, n_features, graph_features) for g, graph_label, n_labels, n_features, graph_features in results]
             max_n_label['value'] = max(
                 max([max(n_labels) for _, _, n_labels, _, _ in results]), max_n_label['value']
             )
