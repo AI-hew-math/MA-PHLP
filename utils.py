@@ -173,7 +173,7 @@ def k_single_hop_subnodes(src, num_hops, starting_hop_restric, A, seed: int = 1)
 
     return nodes
 
-def multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=None, seed: int = 1):
+def angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=None, seed: int = 1):
     # Extract the k-hop enclosing subgraph around link (src, dst) from A. 
     nodes = [src, dst]
 
@@ -221,16 +221,16 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, node_label='drnl', starti
             for j in range(i+1):
                 hop_pair=[i,j]
                 if i == j:
-                    tmp = multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+                    tmp = angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
                     data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)]
                     data[0][0].hop = hop_pair
                 else: 
-                    tmp = multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+                    tmp = angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
                     data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
 
                     hop_pair = [j,i]
 
-                    tmp = multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+                    tmp = angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
                     data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
                     data1[0].hop = hop_pair
                     data = [data1, data2]
@@ -243,16 +243,16 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, node_label='drnl', starti
         hop_pair=[i,j]
 
         if i == j:
-            tmp = multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+            tmp = angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
             data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)]
             data[0][0].hop = hop_pair
         else: 
-            tmp = multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+            tmp = angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
             data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
 
             hop_pair = [j,i]
 
-            tmp = multi_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
+            tmp = angle_hop_subgraph(src, dst, hop_pair, starting_hop_restric, A, y, node_features=x, seed=seed)
             data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=node_label, degree_info=degree_info)
             data1[0].hop = hop_pair
             data = [data1, data2]
