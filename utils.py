@@ -380,7 +380,7 @@ def get_TDA_feature_image(matrix, onedim_PH=False):
             dg1 = np.empty([0,2])
 
         l0 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)]) 
-        l1 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[0]+1)).fit_transform([np.array(dg1)]) 
+        l1 = PersistenceImage(resolution=[16,16],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg1)]) 
     
         return torch.tensor(np.concatenate((l0,l1),axis=1))
     
