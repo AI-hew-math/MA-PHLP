@@ -123,6 +123,7 @@ if (args.data_name in ('Ecoli','PB','pubmed')) and (args.max_nodes_per_hop==None
 if args.data_name=='Power':
     args.num_hops=3
 
+args.max_hop = args.num_hops
 
 print ("-"*50+'Dataset and Features'+"-"*60)
 print ("{:<10}|{:<10}|{:<10}|{:<10}|{:<10}|{:<10}|{:<10}|{:<10}|{:<15}|{:<20}"\
