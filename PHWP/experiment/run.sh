@@ -5,7 +5,7 @@ PARENT_DIR=$(dirname "$SCRIPT_DIR")
 EXPERIMENT_DIR="$PARENT_DIR/src"
 
 # # Original WalkPooling
-# for name in Celegans Power USAir NS Celegans Router Yeast PB Ecoli 
+# for name in Celegans Power USAir NS Router Yeast PB Ecoli 
 # do
 #   for i in 1 2 3 4 5 6 7 8 9 10
 #   do
@@ -24,7 +24,7 @@ done
 
 
 # # WalkPooling with Persistent homology (Angle)
-# for name in Celegans Power USAir NS Celegans Router Yeast PB Ecoli 
+# for name in Celegans Power USAir NS Router Yeast PB Ecoli 
 # do
 #   for i in 1 2 3 4 5 6 7 8 9 10
 #   do
