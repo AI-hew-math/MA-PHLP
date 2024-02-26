@@ -14,7 +14,7 @@ EXPERIMENT_DIR="$PARENT_DIR/src"
 # done
 
 # WalkPooling with Persistent homology (Angle-multi focus)
-for name in Power Celegans USAir NS Celegans Router Yeast PB Ecoli 
+for name in Power Celegans USAir NS Router Yeast PB Ecoli 
 do
   for i in 1 2 3 4 5 6 7 8 9 10
   do
