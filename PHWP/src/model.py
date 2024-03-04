@@ -71,10 +71,15 @@ class PH_LinkPred(MessagePassing):
             hidden_channels, heads, walk_len)
 
         L=walk_len*5+1
-        self.linear = torch.nn.Linear(tda_vector_size, 72)
-        self.act= nn.Sigmoid()
+        tda_output_size = int((1/2)*L*heads)
+        # self.linear = torch.nn.Linear(tda_vector_size, 72)
+        # self.act= nn.Sigmoid()
+        self.linear = torch.nn.Linear(tda_vector_size, 2*tda_output_size)
+        self.linear2 = torch.nn.Linear(2*tda_output_size, tda_output_size)
+        self.act= nn.Softmax(dim=1)
 
         self.classifier = MLP(L*heads + 72,MSE=MSE) 
+        self.alpha = torch.nn.Parameter(torch.tensor([0.,0.]))
 
     def forward(self, x, edge_index, edge_mask, batch, tda_vector, z = None):
         
@@ -100,9 +105,14 @@ class PH_LinkPred(MessagePassing):
 
         #Classifier 
         out_tda= self.linear(tda_vector)
+        out_tda = F.leaky_relu(out_tda)
+        out_tda= self.linear2(out_tda)
         out_tda = self.act(out_tda)
 
-        out = torch.cat((feature_list, out_tda ),dim=1) 
+        alpha = torch.softmax(self.alpha, dim=0)
+
+        # out = torch.cat((feature_list, out_tda ),dim=1) 
+        out = torch.cat((feature_list*self.alpha[0], out_tda*self.alpha[1]),dim=1)
         out = self.classifier(out)
         return out
         
