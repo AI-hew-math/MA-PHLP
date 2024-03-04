@@ -253,15 +253,16 @@ def get_multi_PI(subgraph, args):
             for j in range(0,i+1):
                 if i==j:
                     if not i==args.max_hop:
-                        subgraph_multi_mask = multi_hop_submask([i,i],subgraph)
+                        subgraph_multi_mask = multi_hop_submask([i,j],subgraph)
                         multi_TDA_feature = get_PI(subgraph, args, subgraph_multi_mask)
                         
                         TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
                 else:
-                    subgraph_multi_mask = multi_hop_submask([i,args.max_hop],subgraph)
+                    subgraph_multi_mask = multi_hop_submask([i,j],subgraph)
                     multi_TDA_feature = (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
-                    subgraph_multi_mask = multi_hop_submask([args.max_hop,i],subgraph)
+                    subgraph_multi_mask = multi_hop_submask([j,i],subgraph)
                     multi_TDA_feature += (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
+                    multi_TDA_feature /= multi_TDA_feature.max()
 
                     TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
 
