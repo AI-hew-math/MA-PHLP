@@ -178,7 +178,8 @@ def get_PI(subgraph,args,multi_submask = None):
     r = torch.LongTensor(r)
     edge_index = torch.stack([u, v], 0)
 
-    z = drnl_node_labeling(adj, 0, 1)
+    z = drnl_node_labeling(adj, src, dst)
+    # z = drnl_node_labeling(adj, 0, 1)
     inf_value = torch.max(z) + 1
 
     node_labeling = give_deg_info(z, adj, 5)
@@ -200,7 +201,8 @@ def get_PI(subgraph,args,multi_submask = None):
     r = torch.LongTensor(r)
     edge_index = torch.stack([u, v], 0)
 
-    z = drnl_node_labeling(adj, 0, 1)
+    z = drnl_node_labeling(adj, src, dst)
+    # z = drnl_node_labeling(adj, 0, 1)
     z[torch.where(z==0)]=inf_value
 
     node_labeling = give_deg_info(z, adj, 5)
@@ -219,25 +221,42 @@ def get_multi_PI(subgraph, args, max_hop=3):
     if args.multi_angle==True:
         TDA_feature = get_PI(subgraph, args)
 
-        for i in range(max_hop):
-            subgraph_multi_mask = multi_hop_submask([i,max_hop],subgraph)
-            multi_TDA_feature = (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
-            subgraph_multi_mask = multi_hop_submask([max_hop,i],subgraph)
-            multi_TDA_feature += (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
+        # for i in range(max_hop):
+        #     subgraph_multi_mask = multi_hop_submask([i,max_hop],subgraph)
+        #     multi_TDA_feature = (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
+        #     subgraph_multi_mask = multi_hop_submask([max_hop,i],subgraph)
+        #     multi_TDA_feature += (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
 
-            # Normalization
-            half_size= multi_TDA_feature.size(1)//2
-            first_half = multi_TDA_feature[0, :half_size] / multi_TDA_feature[0, :half_size].max()
-            second_half = multi_TDA_feature[0, half_size:] / multi_TDA_feature[0, half_size:].max()
-            multi_TDA_feature = torch.concat([first_half, second_half],dim=0).unsqueeze(0)
+        #     # Normalization
+        #     half_size= multi_TDA_feature.size(1)//2
+        #     first_half = multi_TDA_feature[0, :half_size] / multi_TDA_feature[0, :half_size].max()
+        #     second_half = multi_TDA_feature[0, half_size:] / multi_TDA_feature[0, half_size:].max()
+        #     multi_TDA_feature = torch.concat([first_half, second_half],dim=0).unsqueeze(0)
             
-            TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
+        #     TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
 
-        for i in range(1, max_hop):
-            subgraph_multi_mask = multi_hop_submask([i,i],subgraph)
-            multi_TDA_feature = get_PI(subgraph, args, subgraph_multi_mask)
+        # for i in range(1, max_hop):
+        #     subgraph_multi_mask = multi_hop_submask([i,i],subgraph)
+        #     multi_TDA_feature = get_PI(subgraph, args, subgraph_multi_mask)
             
-            TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
+        #     TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
+
+        for i in range(1,args.max_hop+1):
+            for j in range(0,i+1):
+                if i==j:
+                    if not i==args.max_hop:
+                        subgraph_multi_mask = multi_hop_submask([i,j],subgraph)
+                        multi_TDA_feature = get_PI(subgraph, args, subgraph_multi_mask)
+                        
+                        TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
+                else:
+                    subgraph_multi_mask = multi_hop_submask([i,j],subgraph)
+                    multi_TDA_feature = (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
+                    subgraph_multi_mask = multi_hop_submask([j,i],subgraph)
+                    multi_TDA_feature += (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
+                    multi_TDA_feature /= multi_TDA_feature.max()
+
+                    TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
 
     else:
         TDA_feature = get_PI(subgraph, args)
