@@ -189,6 +189,18 @@ else:
     model = LinkPred(in_channels = num_features, hidden_channels = hidden_channels, \
         heads = heads, walk_len = walk_len, drnl = args.drnl,z_max = z_max, MSE= args.MSE ).to(device)
 
+params = [param for name, param in model.named_parameters() if 'alpha' not in name]
+alpha_params = [param for name, param in model.named_parameters() if 'alpha' in name]
+optimizer = torch.optim.Adam([{'params': params}], lr=lr, weight_decay=weight_decay)
+optimizer_alpha = torch.optim.Adam([{'params': alpha_params}], lr=lr,weight_decay=weight_decay)
+scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_alpha, milestones=[20,30], gamma=10)
+# optimizer = torch.optim.Adam([
+#     {'params': [param for name, param in model.named_parameters() if 'alpha' not in name]},  # 기본 학습률을 사용할 매개변수 그룹
+#     {'params': [param for name, param in model.named_parameters() if 'alpha' in name], 'lr': 100*lr},  # 특정 변수에 대한 학습률을 설정
+#     ], lr=lr, weight_decay=weight_decay)
+    # model.parameters(), lr=lr,weight_decay=weight_decay])
+# criterion = torch.nn.MSELoss(reduction='mean')
+
 optimizer = torch.optim.Adam(model.parameters(), lr=lr,weight_decay=weight_decay)
 criterion = torch.nn.MSELoss(reduction='mean')
 
@@ -212,9 +224,12 @@ def train(loader,epoch):
         torch.cuda.empty_cache()
         loss = criterion(out.view(-1), label)  
         optimizer.zero_grad()
+        optimizer_alpha.zero_grad()
         loss.backward()  
         optimizer.step()
+        optimizer_alpha.step()
         loss_epoch=loss_epoch+loss.item()
+    scheduler.step()
     return loss_epoch/len(loader)
 
 
@@ -264,11 +279,12 @@ for epoch in range(0, args.epoch_num):
     if val_auc > Best_Val_fromAUC:
         Best_Val_fromAUC = val_auc
         Final_Test_AUC_fromAUC = test_auc
-    if epoch%10 == 0:
-        f = open(filename, 'a')
-        f.write(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, ValLoss : {val_loss:.4f},\
-                    Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f} \n')
-        f.close()
+    # if epoch%10 == 0:
+    f = open(filename, 'a')
+    f.write(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, ValLoss : {val_loss:.4f},\
+                Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f} \n')
+    f.write('alpha: '+str(torch.softmax(model.alpha, dim=0))+'\n' )
+    f.close()
     print(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, Val Loss : {val_loss:.4f}, Val AUC: {val_auc:.4f}, Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f}')
 
 print(f'From loss: Final Test AUC: {Final_Test_AUC_fromloss:.4f}')
@@ -277,6 +293,7 @@ print(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}')
 f = open(filename, 'a')
 f.write(f'From loss: Final Test AUC: {Final_Test_AUC_fromloss:.4f}'+ '\n')
 f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n')
+f.write('alpha: '+str(torch.softmax(model.alpha, dim=0))+'\n' )
 f.close()
 
 if isinstance(args.log,str) :
