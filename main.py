@@ -93,7 +93,10 @@ args = parser.parse_args()
 
 if (args.data_name in ('Ecoli','PB')):
     args.starting_hop_restric=[2,100]
-
+if args.data_name == 'Power':
+    args.Max_hops=6
+if args.data_name == 'Ecoli' and args.onedim_PH:
+    args.Max_hops=2
 
 print ("-"*35+'Dataset and Features'+"-"*35)
 print ("{:<10}|{:<10}|{:<10}|{:<10}|{:<25}|{:<10}|{:<10}"\
