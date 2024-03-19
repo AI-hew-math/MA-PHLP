@@ -390,7 +390,8 @@ def prepare_data(args):
 
     if args.data_name in ['USAir', 'NS', 'Celegans','Power','Router','Yeast','PB','Ecoli']:
         data = load_unsplitted_data(args)
-    data = split_edges(data,args)  ## 서로다른 seed 를 통해 데이터 생성
+
+    data = split_edges(data,args)  # depends on args.seed
 
     data_observed,feature_results= set_init_attribute_representation(data,args)
 

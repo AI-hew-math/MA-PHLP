@@ -60,10 +60,11 @@ def node_labeling_fitration(edge_index, z):
     return matrix
 
 
-def get_TDA_feature(matrix, args): # Not multi = 36 / Multi = 18
+def get_TDA_feature(matrix, args): 
     death = matrix.max() + 5
     matrix[np.where(matrix == 0)] = death # replace death
     np.fill_diagonal(matrix,0)
+    
     # get persistence diagram
     RipsM = gd.RipsComplex(distance_matrix = matrix, max_edge_length=death+1)
     RipsM_tree = RipsM.create_simplex_tree(max_dimension = 1)
@@ -73,7 +74,7 @@ def get_TDA_feature(matrix, args): # Not multi = 36 / Multi = 18
     dg0 = RipsM_tree.persistence_intervals_in_dimension(0)
     dg0[np.where(dg0 == np.inf)] = death
 
-    if args.multi_angle == True:
+    if args.multi_angle == True: # Not multi = 36 / Multi = 18
         feature_size=18
     else:
         feature_size=36
@@ -158,7 +159,7 @@ def get_PI(subgraph,args,multi_submask = None):
     adjacency_data = np.ones(subgraph.edge_index.size(1)) 
     adjacency_matrix = csr_matrix((adjacency_data, (subgraph.edge_index[0], subgraph.edge_index[1])), shape=(num_nodes, num_nodes))
 
-    if callable(multi_submask):
+    if multi_submask is not None:
         adj_lil = adjacency_matrix.tolil()
         adj_lil[multi_submask, :] = 0  
         adj_lil[:, multi_submask] = 0  
@@ -166,7 +167,7 @@ def get_PI(subgraph,args,multi_submask = None):
 
     src,dst = subgraph.edge_index[:,~subgraph.edge_mask][0] 
  
-    ###### positive #########
+    ###### with target link #########
     adj=adjacency_matrix.copy()
     adj=adj.tolil()
     adj[src,dst]=1 
@@ -178,8 +179,8 @@ def get_PI(subgraph,args,multi_submask = None):
     r = torch.LongTensor(r)
     edge_index = torch.stack([u, v], 0)
 
-    z = drnl_node_labeling(adj, src, dst)
-    # z = drnl_node_labeling(adj, 0, 1)
+    
+    z = drnl_node_labeling(adj, 0, 1)
     inf_value = torch.max(z) + 1
 
     node_labeling = give_deg_info(z, adj, 5)
@@ -188,7 +189,7 @@ def get_PI(subgraph,args,multi_submask = None):
     data1_TDA_feature = get_TDA_feature(distance_matrix, args)
 
 
-    ####### negative #########
+    ####### without target link #########
     adj=adjacency_matrix.copy()
 
     adj=adj.tolil()
@@ -202,7 +203,6 @@ def get_PI(subgraph,args,multi_submask = None):
     edge_index = torch.stack([u, v], 0)
 
     z = drnl_node_labeling(adj, src, dst)
-    # z = drnl_node_labeling(adj, 0, 1)
     z[torch.where(z==0)]=inf_value
 
     node_labeling = give_deg_info(z, adj, 5)
@@ -216,30 +216,10 @@ def get_PI(subgraph,args,multi_submask = None):
     return TDA_feature.to(torch.float)
 
 
-def get_multi_PI(subgraph, args, max_hop=3): 
+def get_multi_PI(subgraph, args): 
 
     if args.multi_angle==True:
         TDA_feature = get_PI(subgraph, args)
-
-        # for i in range(max_hop):
-        #     subgraph_multi_mask = multi_hop_submask([i,max_hop],subgraph)
-        #     multi_TDA_feature = (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
-        #     subgraph_multi_mask = multi_hop_submask([max_hop,i],subgraph)
-        #     multi_TDA_feature += (1/2)*get_PI(subgraph, args, subgraph_multi_mask)
-
-        #     # Normalization
-        #     half_size= multi_TDA_feature.size(1)//2
-        #     first_half = multi_TDA_feature[0, :half_size] / multi_TDA_feature[0, :half_size].max()
-        #     second_half = multi_TDA_feature[0, half_size:] / multi_TDA_feature[0, half_size:].max()
-        #     multi_TDA_feature = torch.concat([first_half, second_half],dim=0).unsqueeze(0)
-            
-        #     TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
-
-        # for i in range(1, max_hop):
-        #     subgraph_multi_mask = multi_hop_submask([i,i],subgraph)
-        #     multi_TDA_feature = get_PI(subgraph, args, subgraph_multi_mask)
-            
-        #     TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
 
         for i in range(1,args.max_hop+1):
             for j in range(0,i+1):
@@ -257,7 +237,7 @@ def get_multi_PI(subgraph, args, max_hop=3):
                     multi_TDA_feature /= multi_TDA_feature.max()
 
                     TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
-
+        
     else:
         TDA_feature = get_PI(subgraph, args)
 

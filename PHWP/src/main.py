@@ -3,8 +3,8 @@ import numpy as np
 import argparse
 import os.path
 import os
-# 사용하고픈 GPU 번호 설정
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
+os.environ['CUDA_VISIBLE_DEVICES'] = '1' # GPU number
 
 from utils import prepare_data 
 from model import LinkPred, PH_LinkPred 
@@ -174,7 +174,6 @@ if args.drnl==True:
         z_max = max(z_max, torch.max(data.z).numpy())
     z_max = z_max+1
     
-    #if use drnl, we use a Embedding with dimension = hidden_channels
     num_features = hidden_channels + num_features
 
 torch.cuda.empty_cache()
@@ -194,22 +193,14 @@ alpha_params = [param for name, param in model.named_parameters() if 'alpha' in 
 optimizer = torch.optim.Adam([{'params': params}], lr=lr, weight_decay=weight_decay)
 optimizer_alpha = torch.optim.Adam([{'params': alpha_params}], lr=lr,weight_decay=weight_decay)
 scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer_alpha, milestones=[20,30], gamma=10)
-# optimizer = torch.optim.Adam([
-#     {'params': [param for name, param in model.named_parameters() if 'alpha' not in name]},  # 기본 학습률을 사용할 매개변수 그룹
-#     {'params': [param for name, param in model.named_parameters() if 'alpha' in name], 'lr': 100*lr},  # 특정 변수에 대한 학습률을 설정
-#     ], lr=lr, weight_decay=weight_decay)
-    # model.parameters(), lr=lr,weight_decay=weight_decay])
-# criterion = torch.nn.MSELoss(reduction='mean')
 
-optimizer = torch.optim.Adam(model.parameters(), lr=lr,weight_decay=weight_decay)
-criterion = torch.nn.MSELoss(reduction='mean')
 
 if args.MSE:
     criterion = torch.nn.MSELoss(reduction='mean')
 else:
     criterion = torch.nn.BCEWithLogitsLoss()
 
-def train(loader,epoch):
+def train(loader):
     model.train()
     loss_epoch=0
     for data in tqdm(loader,desc="train"):  # Iterate in batches over the training dataset.
@@ -224,9 +215,11 @@ def train(loader,epoch):
         torch.cuda.empty_cache()
         loss = criterion(out.view(-1), label)  
         optimizer.zero_grad()
+ 
         optimizer_alpha.zero_grad()
         loss.backward()  
         optimizer.step()
+
         optimizer_alpha.step()
         loss_epoch=loss_epoch+loss.item()
     scheduler.step()
@@ -273,7 +266,7 @@ f.write(filename + '\n')
 f.close()
 
 for epoch in range(0, args.epoch_num):
-    loss_epoch = train(train_loader,epoch)
+    loss_epoch = train(train_loader)
     val_auc, val_ap, val_loss = test(val_loader,data_type='val')
     test_auc,test_ap, test_loss = test(test_loader,data_type='test')
     if val_auc > Best_Val_fromAUC:
@@ -283,7 +276,6 @@ for epoch in range(0, args.epoch_num):
     f = open(filename, 'a')
     f.write(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, ValLoss : {val_loss:.4f},\
                 Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f} \n')
-    f.write('alpha: '+str(torch.softmax(model.alpha, dim=0))+'\n' )
     f.close()
     print(f'Epoch: {epoch:03d}, Loss : {loss_epoch:.4f}, Val Loss : {val_loss:.4f}, Val AUC: {val_auc:.4f}, Test AUC: {test_auc:.4f}, Picked AUC:{Final_Test_AUC_fromAUC:.4f}')
 
@@ -293,7 +285,6 @@ print(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}')
 f = open(filename, 'a')
 f.write(f'From loss: Final Test AUC: {Final_Test_AUC_fromloss:.4f}'+ '\n')
 f.write(f'From AUC: Final Test AUC: {Final_Test_AUC_fromAUC:.4f}'+ '\n')
-f.write('alpha: '+str(torch.softmax(model.alpha, dim=0))+'\n' )
 f.close()
 
 if isinstance(args.log,str) :

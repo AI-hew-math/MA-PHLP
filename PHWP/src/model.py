@@ -72,13 +72,12 @@ class PH_LinkPred(MessagePassing):
 
         L=walk_len*5+1
         tda_output_size = int((1/2)*L*heads)
-        # self.linear = torch.nn.Linear(tda_vector_size, 72)
+        self.linear = torch.nn.Linear(tda_vector_size, 4*tda_output_size)
+        self.linear2 = torch.nn.Linear(4*tda_output_size, tda_output_size)
         # self.act= nn.Sigmoid()
-        self.linear = torch.nn.Linear(tda_vector_size, 2*tda_output_size)
-        self.linear2 = torch.nn.Linear(2*tda_output_size, tda_output_size)
         self.act= nn.Softmax(dim=1)
-
-        self.classifier = MLP(L*heads + 72,MSE=MSE) 
+    
+        self.classifier = MLP(L*heads + tda_output_size,MSE=MSE)
         self.alpha = torch.nn.Parameter(torch.tensor([0.,0.]))
 
     def forward(self, x, edge_index, edge_mask, batch, tda_vector, z = None):
@@ -103,16 +102,20 @@ class PH_LinkPred(MessagePassing):
         #Walk Pooling
         feature_list = self.wp(x_out, edge_index, edge_mask, batch)
 
-        #Classifier 
+        #PHLP
         out_tda= self.linear(tda_vector)
-        out_tda = F.leaky_relu(out_tda)
+        out_tda = F.relu(out_tda)
+        out_tda = F.dropout(out_tda, p=0.5, training=self.training)
         out_tda= self.linear2(out_tda)
         out_tda = self.act(out_tda)
 
         alpha = torch.softmax(self.alpha, dim=0)
+        # alpha = torch.sigmoid(self.alpha)
 
-        # out = torch.cat((feature_list, out_tda ),dim=1) 
+        # out = torch.cat((feature_list, out_tda ),dim=1)
         out = torch.cat((feature_list*self.alpha[0], out_tda*self.alpha[1]),dim=1)
+
+        #Classifier 
         out = self.classifier(out)
         return out
         
