@@ -1,15 +1,9 @@
-# import os.path as osp
-# import os
-
 import torch
+import os
 from sklearn.metrics import roc_auc_score, average_precision_score
-# import numpy as np
-# import scipy.sparse as ssp
 from tqdm import tqdm
 import argparse
 import re
-
-
 import torch.nn.functional as F
 from utils import set_random_seed, load_TDA_data, Calculate_TDA_feature 
 from model import Multi_PHLP, PHLP
@@ -18,6 +12,7 @@ from pytorchtools import EarlyStopping
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Device:', device)
 
+cur_dir = os.path.dirname(os.path.realpath(__file__))
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -121,9 +116,9 @@ print ("{:<15}|{:<15}"\
 print ("-"*33)
 
 print('<<Begin calculating Persistent Homological feature>>')
-Calculate_TDA_feature(**vars(args))
+Calculate_TDA_feature(args)
 
-train_loader, val_loader, test_loader = load_TDA_data(args.data_name, args.onedim_PH, args.multi_angle, args.seed, args.batch_size)
+train_loader, val_loader, test_loader = load_TDA_data(args)
 print('<<Completed>>')
 
 sample = next(iter(train_loader))
@@ -203,16 +198,20 @@ Best_Val_fromAUC = 0
 Best_Val_loss = 10000
 Final_Test_AUC_fromAUC=0
 
+file_dir_ =  cur_dir + '/data/result'   
+if not os.path.exists(file_dir_):
+    os.makedirs(file_dir_)
+    
 if args.onedim_PH:
     if args.multi_angle:
-        filename = "Multi_PHLP_{}_seed{}.txt".format(args.data_name, args.seed)
+        filename = file_dir_ + "/Multi_PHLP_{}_seed{}.txt".format(args.data_name, args.seed)
     else:
-        filename = "PHLP_{}_seed{}.txt".format(args.data_name, args.seed)
+        filename = file_dir_ + "/PHLP_{}_seed{}.txt".format(args.data_name, args.seed)
 else:
     if args.multi_angle:
-        filename = "Multi_PHLP(0dim)_{}_seed{}.txt".format(args.data_name, args.seed)
+        filename = file_dir_ + "/Multi_PHLP(0dim)_{}_seed{}.txt".format(args.data_name, args.seed)
     else:
-        filename = "PHLP(0dim)_{}_seed{}.txt".format(args.data_name, args.seed)
+        filename = file_dir_ + "/PHLP(0dim)_{}_seed{}.txt".format(args.data_name, args.seed)
     
 f = open(filename, 'w')
 f.write(filename + '\n')
