@@ -9,7 +9,7 @@ import random
 import argparse
 from torch.utils.data import DataLoader
 sys.path.append('pytorch_DGCNN')
-from pytorch_DGCNN.main import *
+from DGCNN import *
 from util_functions import *
 
 import warnings
@@ -100,7 +100,10 @@ random.seed(cmd_args.seed)
 np.random.seed(cmd_args.seed)
 torch.manual_seed(cmd_args.seed)
 if args.hop != 'auto':
-    args.hop = int(args.hop)
+    if args.data_name != 'Power':
+        args.hop = int(args.hop)
+    else:
+        args.hop = 6
 if args.max_nodes_per_hop is not None:
     args.max_nodes_per_hop = int(args.max_nodes_per_hop)
 
