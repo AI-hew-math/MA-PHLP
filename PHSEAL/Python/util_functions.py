@@ -194,7 +194,7 @@ def get_TDA_feature(matrix,option=['Image','Landscape']):
     if 'Image' in option:
         dg0 = RipsM_tree.persistence_intervals_in_dimension(0)
         dg0 = dg0[~np.isinf(dg0).any(axis=1)]
-        l0 = PersistenceImage(resolution=[2,32],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)])
+        l0 = PersistenceImage(resolution=[1,18],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)])
 
         result['Image'] = torch.tensor(l0)
         result['Image'] = result['Image']/(result['Image'].max()+.0001)
