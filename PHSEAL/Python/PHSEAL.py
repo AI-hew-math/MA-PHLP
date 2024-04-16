@@ -182,7 +182,7 @@ if args.use_attribute and attributes is not None:
 
 set_random_seed(args.seed)
 if args.only_predict:  # no need to use negatives
-    _, test_graphs, max_n_label = links2subgraphs(
+    _, test_graphs, max_n_label, hop = links2subgraphs(
         A, 
         None, 
         None, 
@@ -196,7 +196,7 @@ if args.only_predict:  # no need to use negatives
     )
     print('# test: %d' % (len(test_graphs)))
 else:
-    train_graphs, test_graphs, max_n_label = links2subgraphs(
+    train_graphs, test_graphs, max_n_label, hop = links2subgraphs(
         A, 
         train_pos, 
         train_neg, 
@@ -210,6 +210,7 @@ else:
         args.no_parallel
     )
     print('# train: %d, # test: %d' % (len(train_graphs), len(test_graphs)))
+args.hop = hop
 
 cmd_args.gm = 'DGCNN'
 cmd_args.sortpooling_k = 0.6
