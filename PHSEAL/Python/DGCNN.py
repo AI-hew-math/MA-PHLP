@@ -44,8 +44,8 @@ class Classifier(nn.Module):
                 tda_vector_size = int((cmd_args.h+3)*(cmd_args.h)*(1/2)*36)
             else:
                 tda_vector_size = 36
-            self.linear = torch.nn.Linear(tda_vector_size, 4*out_dim)
-            self.linear2 = torch.nn.Linear(4*out_dim, out_dim)
+            self.linear = torch.nn.Linear(tda_vector_size, 2*tda_vector_size)
+            self.linear2 = torch.nn.Linear(2*tda_vector_size, out_dim)
             self.alpha = torch.nn.Parameter(torch.tensor([0.,0.]))
             self.act= nn.Softmax(dim=1)
             out_dim = 2*out_dim
