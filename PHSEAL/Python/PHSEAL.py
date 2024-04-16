@@ -99,11 +99,7 @@ if args.cuda:
 random.seed(cmd_args.seed)
 np.random.seed(cmd_args.seed)
 torch.manual_seed(cmd_args.seed)
-if args.hop != 'auto':
-    if args.data_name != 'Power':
-        args.hop = int(args.hop)
-    else:
-        args.hop = 6
+
 if args.max_nodes_per_hop is not None:
     args.max_nodes_per_hop = int(args.max_nodes_per_hop)
 
