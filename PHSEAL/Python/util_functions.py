@@ -181,7 +181,7 @@ def node_labeling_fitration(edge_index, z):
     return matrix
 
 def get_TDA_feature(matrix,option=['Image','Landscape']):
-    death = matrix.max()*1.2
+    death = matrix.max() + 5
     matrix[np.where(matrix == 0)] = death # replace death
     np.fill_diagonal(matrix,0)
     # get persistence diagram
@@ -197,7 +197,6 @@ def get_TDA_feature(matrix,option=['Image','Landscape']):
         l0 = PersistenceImage(resolution=[1,18],weight=lambda x:  1/np.log(x[1]+1)).fit_transform([np.array(dg0)])
 
         result['Image'] = torch.tensor(l0)
-        result['Image'] = result['Image']/(result['Image'].max()+.0001)
 
     del RipsM, RipsM_tree
 
@@ -243,6 +242,7 @@ def get_multi_PI(subgraph, h):
                 multi_TDA_feature = (1/2)*get_PI(subgraph_multi)
                 _, subgraph_multi = multi_hop_subgraph(0,1,[j,i],subgraph)
                 multi_TDA_feature += (1/2)*get_PI(subgraph_multi)
+                multi_TDA_feature /= multi_TDA_feature.max()
                 TDA_feature = torch.concat([TDA_feature, multi_TDA_feature],dim=1)
     return TDA_feature
 
@@ -288,6 +288,7 @@ def get_PI(subgraph):
     data2_TDA_feature = result['Image']
 
     TDA_feature = torch.concat([data1_TDA_feature, data2_TDA_feature],dim=1)
+    TDA_feature /= TDA_feature.max()
 
     return TDA_feature
 
