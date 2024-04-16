@@ -161,7 +161,7 @@ def links2subgraphs(A, train_pos, train_neg, test_pos, test_neg, h=1,
         test_graphs = helper(A, links, labels)
     elif test_pos:
         test_graphs = helper(A, test_pos, np.ones_like(test_pos[0]))
-    return train_graphs, test_graphs, max_n_label['value']
+    return train_graphs, test_graphs, max_n_label['value'], h
 
 def parallel_worker(x):
     return subgraph_extraction_labeling(*x)
