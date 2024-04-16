@@ -99,7 +99,8 @@ if args.cuda:
 random.seed(cmd_args.seed)
 np.random.seed(cmd_args.seed)
 torch.manual_seed(cmd_args.seed)
-
+if args.data_name == 'Power' and args.graph_feature:
+    args.hop = 7
 if args.max_nodes_per_hop is not None:
     args.max_nodes_per_hop = int(args.max_nodes_per_hop)
 
