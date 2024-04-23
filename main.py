@@ -9,6 +9,9 @@ from utils import set_random_seed, load_TDA_data, Calculate_TDA_feature
 from model import Multi_PHLP, PHLP
 from pytorchtools import EarlyStopping
 
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '1' # GPU number
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print('Device:', device)
 
@@ -46,7 +49,7 @@ parser.add_argument('--test-ratio', type=float, default=0.1,
                     help='ratio of test links')
 parser.add_argument('--val-ratio', type=float, default=0.05,
                     help='ratio of validation links. If using the splitted data from SEAL,\
-                     it is the ratio on the observed links, othewise, it is the ratio on the whole links.')
+                     it is the ratio on the observed links, othewise, it is the ratio on the whole links')
 parser.add_argument('--practical-neg-sample', type=bool, default = False,
                     help='only see the train positive edges when sampling negative')
 #setups in preparing the training set 
@@ -59,6 +62,8 @@ parser.add_argument('--starting-hop-restric', type=parse_list, default=[3,100])
 parser.add_argument('--node-label', type=str, default='degdrnl',
                     help='whether to use degree drnl labeling')
 parser.add_argument('--deg-cut', type=int, default=5)
+parser.add_argument('--centor-nodes', type=str, default='Target',
+                    help='Choose whether the centor_nodes be to "Target" or "Random"')
 
 #Persistent Homology settings
 parser.add_argument('--onedim-PH', type=str2bool, default=False,
@@ -90,16 +95,18 @@ if (args.data_name in ('Ecoli','PB')):
     args.starting_hop_restric=[2,100]
 if args.data_name == 'Power':
     args.Max_hops=7
+    args.centor_nodes='Random'
 if args.data_name == 'Ecoli' and args.onedim_PH:
     args.Max_hops=2
 
-print ("-"*35+'Dataset and Features'+"-"*35)
-print ("{:<10}|{:<10}|{:<10}|{:<10}|{:<25}|{:<10}|{:<10}"\
-    .format('Dataset','Test Ratio','Val Ratio','Max hops', 'starting hop restric', 'node label', 'deg cut'))
-print ("-"*90)
-print ("{:<10}|{:<10}|{:<10}|{:<10}|{:<25}|{:<10}|{:<10}"\
-    .format(args.data_name,args.test_ratio,args.val_ratio,str(args.Max_hops),str(args.starting_hop_restric), str(args.node_label), str(args.deg_cut)))
-print ("-"*90)
+
+print ("-"*40+'Dataset and Features'+"-"*40)
+print ("{:<10}|{:<10}|{:<10}|{:<10}|{:<25}|{:<10}|{:<10}|{:<10}"\
+    .format('Dataset','Test Ratio','Val Ratio','Max hops', 'starting hop restric', 'node label', 'deg cut', 'seed'))
+print ("-"*100)
+print ("{:<10}|{:<10}|{:<10}|{:<10}|{:<25}|{:<10}|{:<10}|{:<10}"\
+    .format(args.data_name,args.test_ratio,args.val_ratio,str(args.Max_hops),str(args.starting_hop_restric), str(args.node_label), str(args.deg_cut), str(args.seed) ))
+print ("-"*100)
 
 print ("-"*10+'Multi Process'+"-"*10)
 print ("{:<15}|{:<15}"\

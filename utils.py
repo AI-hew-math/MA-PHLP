@@ -212,16 +212,16 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, args, degree_info = False
                 hop_pair=[i,j]
                 if i == j:
                     tmp = angle_hop_subgraph(src, dst, hop_pair, args.starting_hop_restric, A, y, node_features=x, seed=args.seed)
-                    data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=args.node_label, degree_info=degree_info)]
+                    data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, degree_info=degree_info, centor_nodes=args.centor_nodes)]
                     data[0][0].hop = hop_pair
                 else: 
                     tmp = angle_hop_subgraph(src, dst, hop_pair, args.starting_hop_restric, A, y, node_features=x, seed=args.seed)
-                    data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=args.node_label, degree_info=degree_info)
+                    data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, degree_info=degree_info, centor_nodes=args.centor_nodes)
 
                     hop_pair = [j,i]
 
                     tmp = angle_hop_subgraph(src, dst, hop_pair, args.starting_hop_restric, A, y, node_features=x, seed=args.seed)
-                    data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=args.node_label, degree_info=degree_info)
+                    data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, degree_info=degree_info, centor_nodes=args.centor_nodes)
                     data1[0].hop = hop_pair
                     data = [data1, data2]
                 multi_data.append(data)
@@ -234,16 +234,16 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, args, degree_info = False
 
         if i == j:
             tmp = angle_hop_subgraph(src, dst, hop_pair, args.starting_hop_restric, A, y, node_features=x, seed=args.seed)
-            data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=args.node_label, degree_info=degree_info)]
+            data = [construct_pyg_graph(*tmp, Max_deg=Max_deg, degree_info=degree_info, centor_nodes=args.centor_nodes)]
             data[0][0].hop = hop_pair
         else: 
             tmp = angle_hop_subgraph(src, dst, hop_pair, args.starting_hop_restric, A, y, node_features=x, seed=args.seed)
-            data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=args.node_label, degree_info=degree_info)
+            data1 = construct_pyg_graph(*tmp, Max_deg=Max_deg, degree_info=degree_info, centor_nodes=args.centor_nodes)
 
             hop_pair = [j,i]
 
             tmp = angle_hop_subgraph(src, dst, hop_pair, args.starting_hop_restric, A, y, node_features=x, seed=args.seed)
-            data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, node_label=args.node_label, degree_info=degree_info)
+            data2 = construct_pyg_graph(*tmp, Max_deg=Max_deg, degree_info=degree_info, centor_nodes=args.centor_nodes)
             data1[0].hop = hop_pair
             data = [data1, data2]
         multi_data.append(data)
@@ -283,7 +283,7 @@ def give_deg_info(z, adj, Max_deg):
 
     return z
 
-def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl', degree_info=False):
+def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, degree_info=False, centor_nodes='Target'):
 
     adj=A.copy()
     ####### with target link ######### 
@@ -300,10 +300,13 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
 
     y = torch.tensor([y])
 
-    if node_label == 'drnl':  # DRNL
+    sorted_indices = sorted(range(len(node_ids)), key=lambda i: node_ids[i])
+    a,b = sorted_indices[:2]
+
+    if centor_nodes =='Target':
         z = drnl_node_labeling(adj, 0, 1)
-    else:
-        raise Exception("Something Wrong in construct_pyg_graph")
+    elif centor_nodes =='Random':
+        z = drnl_node_labeling(adj, a, b)
 
     if degree_info == True:
         z = give_deg_info(z, adj, Max_deg)
@@ -324,11 +327,9 @@ def construct_pyg_graph(node_ids, A, node_features, y, Max_deg, node_label='drnl
     edge_index = torch.stack([u, v], 0)
 
     y = torch.tensor([y])
-    if node_label == 'drnl':  # DRNL
-        z = drnl_node_labeling(adj, 0, 1)
-    else:
-        raise Exception("Something Wrong in construct_pyg_graph")
- 
+
+    z = drnl_node_labeling(adj, 0, 1)
+
     if degree_info == True:
         z = give_deg_info(z, adj, Max_deg)
     
