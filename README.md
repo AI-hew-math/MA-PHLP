@@ -6,6 +6,9 @@
 This is the source code for paper _Multi Persistent Homology for Link Prediction_.
 
 ## Requirements
+~~~
+pip install -r requirements.txt
+~~~
 
 ## Run
 
