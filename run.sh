@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Multi PHLP (0dim) 
-for name in Power USAir NS PB Yeast Celegans Power Router Ecoli
+for name in USAir NS PB Yeast Celegans Power Router Ecoli
 do
   for i in 1 2 3 4 5 6 7 8 9 10
   do
