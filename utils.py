@@ -33,8 +33,10 @@ def set_random_seed(seed):
         torch.cuda.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
 
-def split_edges(data, seed=123, val_ratio=0.05,test_ratio=0.1, practical_neg_sample=False):
-    set_random_seed(seed)
+def split_edges(data, args, practical_neg_sample=False):
+    val_ratio = args.val_ratio
+    test_ratio = args.test_ratio
+    set_random_seed(args.seed)
     row, col = data.edge_index
     mask = row < col
     row, col = row[mask], col[mask]
@@ -449,7 +451,7 @@ def Calculate_TDA_feature(args):
     if args.data_name in ['USAir', 'NS', 'Celegans','Power','Router','Yeast','PB','Ecoli']:
         data = load_unsplitted_data(args.data_name)
 
-    data = split_edges(data, seed=args.seed)
+    data = split_edges(data, args)
     edge_weight = torch.ones(data.train_pos.size(1)*2, dtype=int)
     train_edge = torch.concat((data.train_pos,data.train_pos[[1,0]]),dim=1)
     A = ssp.csr_matrix((edge_weight, (train_edge[0],train_edge[1])), shape=(data.num_nodes, data.num_nodes))
