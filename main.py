@@ -70,11 +70,11 @@ parser.add_argument('--onedim-PH', type=str2bool, default=False,
                     help='whether to use 1 dimensional persistent homology')
 parser.add_argument('--multi-angle', type=str2bool, default=False,
                     help='whether to use Multi-angle PHLP')
-parser.add_argument('--angle-hop', type=parse_list, default=[3,1],
+parser.add_argument('--angle-hop', type=parse_list, default=[2,2],
                     help='whether to use Multi-angle PHLP')
 
 #Model and Training
-parser.add_argument('--seed', type=int, default=1,
+parser.add_argument('--seed', type=int, default=123,
                     help='random seed (default: 1)')
 parser.add_argument('--lr', type=float, default=0.0005,
                     help='learning rate')
