@@ -201,7 +201,6 @@ def multihop_extract_enclosing_subgraphs(lst, A, x, y, args, degree_info = False
         Max_deg=args.deg_cut
 
     if args.node_label == 'degdrnl':
-        args.node_label = 'drnl'
         degree_info = True
     else:
         degree_info = False
