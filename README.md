@@ -1,4 +1,4 @@
-# Multi_PHLP
+# PHLP: Sole Persistent Homology for Link Prediction - Interpretable Feature Extraction
 
 
 ## About
