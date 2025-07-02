@@ -3,7 +3,7 @@
 
 ## About
 
-This is the source code for paper _Multi Persistent Homology for Link Prediction_.
+This is the source code for paper [_PHLP: Sole Persistent Homology for Link Prediction - Interpretable Feature Extraction_.](PHLP: Sole Persistent Homology for Link Prediction - Interpretable Feature Extraction)
 
 ## Requirements
 ~~~
